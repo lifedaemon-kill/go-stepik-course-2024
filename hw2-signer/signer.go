@@ -15,12 +15,17 @@ func swapChans(in, out chan interface{}) (chan interface{}, chan interface{}) {
 // Написание нескольких функций, которые считают нам какую-то условную хеш-сумму от входных данных
 func ExecutePipeline(workers ...job) {
 	fmt.Println("ExecutePipeline go")
-	in := make(chan interface{}, 1)
-	out := make(chan interface{}, 1)
+	in := make(chan interface{}, 100)
+	out := make(chan interface{}, 100)
+
+	wg := sync.WaitGroup{}
 
 	for _, w := range workers {
+		wg.Wait()
+		wg.Add(1)
 		w(in, out)
-		in, out = swapChans(in, out)
+		wg.Done()
+		//in, out = swapChans(in, out)
 	}
 }
 
@@ -67,18 +72,21 @@ func SingleHash(in, out chan interface{}) {
 // где data - то что пришло на вход (и ушло на выход из SingleHash)
 func MultiHash(in, out chan interface{}) {
 	fmt.Println("MultiHash go")
+
 	var temp string
 	th := []string{"0", "1", "2", "3", "4"}
-	for data := range in {
+
+	for data := range out {
 		temp = ""
 		for _, t := range th {
 			fir := DataSignerCrc32(t + data.(string))
 			fmt.Println(t, fir)
 			temp += fir
 		}
-		out <- temp
+		in <- temp
 	}
-	defer close(out)
+	close(in)
+	fmt.Println("MultiHash end")
 }
 
 // CombineResults получает все результаты, сортирует (https://golang.org/pkg/sort/),
