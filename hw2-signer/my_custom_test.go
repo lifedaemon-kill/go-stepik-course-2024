@@ -21,18 +21,19 @@ func TestSingleHash(t *testing.T) {
 	}
 }
 func TestExecutePipelineSingleHash(t *testing.T) {
-	inn := [2]int{0, 1}
+	inn := []int{0, 1}
 
 	myFlowJobs := []job{
 		job(func(in, out chan interface{}) {
 			for e := range inn {
 				out <- e
 			}
+			close(out)
 		}),
 		job(SingleHash),
 		job(func(in, out chan interface{}) {
-			for range in {
-				fmt.Println(<-in)
+			for e := range in {
+				fmt.Println(e)
 			}
 		}),
 	}
