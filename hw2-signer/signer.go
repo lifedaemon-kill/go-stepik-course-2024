@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"sort"
+	"strconv"
+	"sync"
 )
 
 func swapChans(in, out chan interface{}) (chan interface{}, chan interface{}) {
@@ -13,8 +15,8 @@ func swapChans(in, out chan interface{}) (chan interface{}, chan interface{}) {
 // Написание нескольких функций, которые считают нам какую-то условную хеш-сумму от входных данных
 func ExecutePipeline(workers ...job) {
 	fmt.Println("ExecutePipeline go")
-	in := make(chan interface{})
-	out := make(chan interface{})
+	in := make(chan interface{}, 1)
+	out := make(chan interface{}, 1)
 
 	for _, w := range workers {
 		w(in, out)
@@ -25,14 +27,38 @@ func ExecutePipeline(workers ...job) {
 // SingleHash считает значение crc32(data)+"~"+crc32(md5(data)) (конкатенация двух строк через ~),
 // где data - то что пришло на вход (по сути - числа из первой функции)
 func SingleHash(in, out chan interface{}) {
-	fmt.Println("SingleHash go")
-	for data := range in {
-		fir := DataSignerCrc32(data.(string))
-		sec := DataSignerCrc32(DataSignerMd5(data.(string)))
+	//fmt.Println("SingleHash go")
+	wg := sync.WaitGroup{}
+	for e := range out {
+		dataInt := e.(int)
+		data := strconv.Itoa(dataInt)
 
-		fmt.Println(fir, sec)
-		out <- fir + "~" + sec
+		chan1crc32 := make(chan string, 1)
+		go func(data string, out chan string) {
+			out <- DataSignerCrc32(data)
+			close(out)
+		}(data, chan1crc32)
+
+		md5ch := make(chan string, 1)
+		wg.Wait()
+		wg.Add(1)
+		go func(data string, out chan string) {
+			md5ch <- DataSignerMd5(data)
+			close(md5ch)
+			wg.Done()
+		}(data, md5ch)
+
+		chan2crc32 := make(chan string, 1)
+		go func(data string, out chan string) {
+			out <- DataSignerCrc32(data)
+			close(out)
+		}(<-md5ch, chan2crc32)
+
+		//fmt.Println(fir, sec)
+		in <- <-chan1crc32 + "~" + <-chan2crc32
 	}
+	close(in)
+	//fmt.Println("SingleHash end")
 }
 
 // MultiHash считает значение crc32(th+data)) (конкатенация цифры, приведённой к строке и строки),
@@ -52,6 +78,7 @@ func MultiHash(in, out chan interface{}) {
 		}
 		out <- temp
 	}
+	defer close(out)
 }
 
 // CombineResults получает все результаты, сортирует (https://golang.org/pkg/sort/),
@@ -67,4 +94,5 @@ func CombineResults(in, out chan interface{}) {
 		out <- arr[i] + "_"
 	}
 	out <- arr[len(arr)-1]
+	defer close(out)
 }
