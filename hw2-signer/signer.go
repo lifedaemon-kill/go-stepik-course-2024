@@ -43,8 +43,8 @@ func SingleHash(in, out chan interface{}) {
 		wg.Wait()
 		wg.Add(1)
 		go func(data string, out chan string) {
-			md5ch <- DataSignerMd5(data)
-			close(md5ch)
+			out <- DataSignerMd5(data)
+			close(out)
 			wg.Done()
 		}(data, md5ch)
 
