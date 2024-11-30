@@ -40,3 +40,24 @@ func TestExecutePipelineSingleHash(t *testing.T) {
 
 	ExecutePipeline(myFlowJobs...)
 }
+
+func TestExecutePipelineMultiHash(t *testing.T) {
+	inn := []int{0, 1}
+
+	myFlowJobs := []job{
+		job(func(in, out chan interface{}) {
+			for e := range inn {
+				out <- e
+			}
+			close(out)
+		}),
+		job(MultiHash),
+		job(func(in, out chan interface{}) {
+			for e := range in {
+				fmt.Println(e)
+			}
+		}),
+	}
+
+	ExecutePipeline(myFlowJobs...)
+}
