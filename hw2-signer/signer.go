@@ -7,10 +7,6 @@ import (
 	"sync"
 )
 
-func swapChans(in, out chan interface{}) (chan interface{}, chan interface{}) {
-	return out, in
-}
-
 // ExecutePipeline которая обеспечивает нам конвейерную обработку функций-воркеров, которые что-то делают.
 // Написание нескольких функций, которые считают нам какую-то условную хеш-сумму от входных данных
 func ExecutePipeline(workers ...job) {
@@ -73,17 +69,24 @@ func SingleHash(in, out chan interface{}) {
 func MultiHash(in, out chan interface{}) {
 	fmt.Println("MultiHash go")
 
-	var temp string
 	th := []string{"0", "1", "2", "3", "4"}
+	wg := sync.WaitGroup{}
 
-	for data := range out {
-		temp = ""
-		for _, t := range th {
-			fir := DataSignerCrc32(t + data.(string))
-			fmt.Println(t, fir)
-			temp += fir
+	for dataRaw := range out {
+		data := strconv.Itoa(dataRaw.(int))
+
+		arr := [5]string{}
+		for i, t := range th {
+			wg.Add(1)
+			go func(index int, t string) {
+				arr[index] = DataSignerCrc32(t + data)
+				wg.Done()
+			}(i, t)
+
 		}
-		in <- temp
+		wg.Wait()
+
+		in <- arr[0] + arr[1] + arr[2] + arr[3] + arr[4]
 	}
 	close(in)
 	fmt.Println("MultiHash end")
