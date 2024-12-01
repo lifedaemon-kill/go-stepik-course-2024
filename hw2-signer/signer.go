@@ -14,52 +14,45 @@ func ExecutePipeline(workers ...job) {
 	in := make(chan interface{}, 100)
 	out := make(chan interface{}, 100)
 
-	wg := sync.WaitGroup{}
+	//wg := sync.WaitGroup{}
 
 	for _, w := range workers {
-		wg.Wait()
-		wg.Add(1)
+		//wg.Wait()
+		//wg.Add(1)
 		w(in, out)
-		wg.Done()
-		//in, out = swapChans(in, out)
+		//wg.Done()
+
+		out = in
+		in = make(chan interface{}, 100)
 	}
 }
 
 // SingleHash считает значение crc32(data)+"~"+crc32(md5(data)) (конкатенация двух строк через ~),
 // где data - то что пришло на вход (по сути - числа из первой функции)
 func SingleHash(in, out chan interface{}) {
-	//fmt.Println("SingleHash go")
-	wg := sync.WaitGroup{}
 	for e := range out {
+
 		dataInt := e.(int)
 		data := strconv.Itoa(dataInt)
 
-		chan1crc32 := make(chan string, 1)
-		go func(data string, out chan string) {
-			out <- DataSignerCrc32(data)
-			close(out)
-		}(data, chan1crc32)
+		chCrc1 := make(chan string)
+		chCrc2 := make(chan string)
 
-		md5ch := make(chan string, 1)
-		wg.Wait()
-		wg.Add(1)
-		go func(data string, out chan string) {
-			out <- DataSignerMd5(data)
-			close(out)
-			wg.Done()
-		}(data, md5ch)
+		go func() {
+			chCrc1 <- DataSignerCrc32(data)
+		}()
 
-		chan2crc32 := make(chan string, 1)
-		go func(data string, out chan string) {
-			out <- DataSignerCrc32(data)
-			close(out)
-		}(<-md5ch, chan2crc32)
+		go func() {
+			md5Data := DataSignerMd5(data)
+			chCrc2 <- DataSignerCrc32(md5Data)
+		}()
 
-		//fmt.Println(fir, sec)
-		in <- <-chan1crc32 + "~" + <-chan2crc32
+		cr1 := <-chCrc1
+		cr2 := <-chCrc2
+
+		in <- cr1 + "~" + cr2
 	}
 	close(in)
-	//fmt.Println("SingleHash end")
 }
 
 // MultiHash считает значение crc32(th+data)) (конкатенация цифры, приведённой к строке и строки),
@@ -71,6 +64,7 @@ func MultiHash(in, out chan interface{}) {
 
 	th := []string{"0", "1", "2", "3", "4"}
 	wg := sync.WaitGroup{}
+	in = make(chan interface{}, 100)
 
 	for dataRaw := range out {
 		data := strconv.Itoa(dataRaw.(int))
@@ -96,14 +90,19 @@ func MultiHash(in, out chan interface{}) {
 // объединяет отсортированный результат через _ (символ подчеркивания) в одну строку
 func CombineResults(in, out chan interface{}) {
 	fmt.Println("Combic go")
-	arr := make([]string, 0, 20)
-	for v := range in {
+	arr := make([]string, 0, 100)
+	in = make(chan interface{}, 100)
+
+	for v := range out {
 		arr = append(arr, v.(string))
 	}
+
 	sort.Strings(arr)
+	line := ""
 	for i := 0; i < len(arr)-1; i++ {
-		out <- arr[i] + "_"
+		line += arr[i] + "_"
 	}
-	out <- arr[len(arr)-1]
-	defer close(out)
+	line += arr[len(arr)-1]
+	in <- line
+	close(in)
 }
