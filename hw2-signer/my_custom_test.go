@@ -6,18 +6,20 @@ import (
 )
 
 func TestSingleHash(t *testing.T) {
-	inn := [2]int{0, 1}
-	out := make(chan interface{}, 1)
-	in := make(chan interface{}, 1)
+	const N = 2
+	inputs := [N]int{0, 1}
+	out := make(chan interface{}, N)
+	in := make(chan interface{}, N)
 
 	go SingleHash(in, out)
 
-	out <- inn[0]
-	out <- inn[1]
-
+	for _, v := range inputs {
+		out <- v
+	}
 	close(out)
-	for e := range in {
-		fmt.Println(e)
+
+	for result := range in {
+		fmt.Println(result)
 	}
 }
 func TestExecutePipelineSingleHash(t *testing.T) {
