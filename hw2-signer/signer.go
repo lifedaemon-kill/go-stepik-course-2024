@@ -14,23 +14,24 @@ func ExecutePipeline(workers ...job) {
 	in := make(chan interface{}, 100)
 	out := make(chan interface{}, 100)
 
-	//wg := sync.WaitGroup{}
+	wg := sync.WaitGroup{}
 
 	for _, w := range workers {
 		//wg.Wait()
-		//wg.Add(1)
+		wg.Add(1)
 		w(in, out)
-		//wg.Done()
+		wg.Done()
 
-		out = in
-		in = make(chan interface{}, 100)
+		wg.Wait()
+		in = out
+		out = make(chan interface{}, 100)
 	}
 }
 
 // SingleHash считает значение crc32(data)+"~"+crc32(md5(data)) (конкатенация двух строк через ~),
 // где data - то что пришло на вход (по сути - числа из первой функции)
 func SingleHash(in, out chan interface{}) {
-	for e := range out {
+	for e := range in {
 
 		dataInt := e.(int)
 		data := strconv.Itoa(dataInt)
@@ -50,9 +51,9 @@ func SingleHash(in, out chan interface{}) {
 		cr1 := <-chCrc1
 		cr2 := <-chCrc2
 
-		in <- cr1 + "~" + cr2
+		out <- cr1 + "~" + cr2
 	}
-	close(in)
+	close(out)
 }
 
 // MultiHash считает значение crc32(th+data)) (конкатенация цифры, приведённой к строке и строки),
