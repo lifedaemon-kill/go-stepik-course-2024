@@ -2,13 +2,14 @@
 
 https://stepik.org/course/187490
 
-Hw1 - File system tree
-* Pretty-print отображение всех под-директорий. C флагом -f так же выводятся файлы и их размер в байтах
+Hw1 - File system tree - Pretty-print отображение всех под-директорий. C флагом -f так же выводятся файлы и их размер в байтах
+* Implemented
 
 Hw2 - Создание pipeline конвеера функций, используя каналы и распараллеливание
-* not implemented
+* Implemented
 
 Hw3 - Оптимизация поиска в файле
-* not implemented
+* Not implemented
 
 Hw4 - отправлять запросы, получать ответы, работать с параметрами, хедерами, а так же писать тесты.
+* Not implemented
