@@ -30,7 +30,7 @@ func TestPipeline(t *testing.T) {
 		job(func(in, out chan interface{}) {
 			out <- 1
 			time.Sleep(10 * time.Millisecond)
-			currRecieved := atomic.LoadUint32(&recieved)
+			currReceived := atomic.LoadUint32(&recieved)
 			// в чем тут суть
 			// если вы накапливаете значения, то пока вся функция не отрабоатет - дальше они не пойдут
 			// тут я проверяю, что счетчик увеличился в следующей функции
@@ -42,7 +42,7 @@ func TestPipeline(t *testing.T) {
 			// should increase in next function (meaning that values are going there) before current function
 			// finished its execution.
 
-			if currRecieved == 0 {
+			if currReceived == 0 {
 				ok = false
 			}
 		}),
@@ -120,7 +120,7 @@ func TestSigner(t *testing.T) {
 	}
 
 	inputData := []int{0, 1, 1, 2, 3, 5, 8}
-	// inputData := []int{0,1}
+	//inputData := []int{0, 1}
 
 	hashSignJobs := []job{
 		job(func(in, out chan interface{}) {
